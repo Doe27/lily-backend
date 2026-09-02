@@ -8,14 +8,17 @@ import { buildInfo } from "./config/build-info";
 const app = createApp();
 const server = createServer(app);
 
+const usingDefault = (value: string, fallback: string): boolean => value === fallback;
+
 server.listen(env.PORT, () => {
+  const defaultOrigins = "http://localhost:3000";
   logger.info(
     {
-      port: env.PORT,
+      appName: env.APP_NAME,
       environment: env.NODE_ENV,
       ...buildInfo,
     },
-    "Lily backend server started",
+    "Lily backend server started with resolved configuration",
   );
 });
 
