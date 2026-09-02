@@ -34,6 +34,15 @@ describe("agent endpoints", () => {
     });
   });
 
+  it("returns a list envelope whose total matches the number of agents", async () => {
+    const response = await request(app).get("/api/v1/agents");
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(Array.isArray(response.body.data.agents)).toBe(true);
+    expect(response.body.data.total).toBe(response.body.data.agents.length);
+  });
+
   it("creates an agent with validated input", async () => {
     const response = await request(app).post("/api/v1/agents").send({
       name: "Liquidity Bot",
@@ -66,10 +75,13 @@ describe("agent endpoints", () => {
     const response = await request(app).get("/api/v1/agents");
 
     expect(response.status).toBe(200);
-    expect(response.body.data.total).toBe(2);
-    expect(response.body.data.agents[1]).toMatchObject({
-      id: "agentlily_2",
+    expect(response.body.data.total).toBe(3);
+    expect(
+      response.body.data.agents.map((agent: { id: string }) => agent.id),
+    ).toEqual(["agentlily_demo_001", "agentlily_2", "agentlily_3"]);
+    expect(response.body.data.agents[2]).toMatchObject({
       name: "Marketplace Runner",
+      capabilities: ["marketplace-purchases", "settlement"],
     });
   });
 
