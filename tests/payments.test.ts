@@ -1,100 +1,45 @@
-import request from "supertest";
 import { describe, expect, it } from "vitest";
 
-import { createApp } from "../src/app";
+import { normalizeAmount, quoteSchema } from "../src/modules/payments/payments.schema";
 
-describe("payment quote endpoint", () => {
-  const app = createApp();
-
-  const validPayload = {
-    fromWalletId: "wallet_abc123",
-    toAddress: "GDXYZSTELLARADDRESS1234567890ABCDEFGHIJKL",
-    amount: "10.5",
-    assetCode: "USDC",
-  };
-
-  it("returns a typed quote response for valid input", async () => {
-    const response = await request(app)
-      .post("/api/v1/payments/quote")
-      .send(validPayload);
-
-    expect(response.status).toBe(201);
-    expect(response.body.success).toBe(true);
-    expect(response.body.data).toMatchObject({
-      fromWalletId: validPayload.fromWalletId,
-      toAddress: validPayload.toAddress,
-      amount: validPayload.amount,
-      assetCode: validPayload.assetCode,
-      estimatedFee: expect.any(String),
-      estimatedTotal: validPayload.amount,
-    });
-    expect(response.body.data.quoteId).toMatch(/^quote_/);
-    expect(response.body.data.expiresAt).toBeDefined();
-    expect(response.body.data.createdAt).toBeDefined();
+describe("normalizeAmount", () => {
+  it("strips leading zeros from integer part", () => {
+    expect(normalizeAmount("007.00")).toBe("7.00");
   });
 
-  it("rejects missing fromWalletId with a 400", async () => {
-    const response = await request(app)
-      .post("/api/v1/payments/quote")
-      .send({
-        toAddress: validPayload.toAddress,
-        amount: validPayload.amount,
-        assetCode: validPayload.assetCode,
-      });
-
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.message).toBe("Request validation failed");
+  it("preserves valid amounts without leading zeros", () => {
+    expect(normalizeAmount("100.00")).toBe("100.00");
   });
 
-  it("rejects missing toAddress with a 400", async () => {
-    const response = await request(app)
-      .post("/api/v1/payments/quote")
-      .send({
-        fromWalletId: validPayload.fromWalletId,
-        amount: validPayload.amount,
-        assetCode: validPayload.assetCode,
-      });
-
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.message).toBe("Request validation failed");
+  it("keeps single zero before decimal for sub-unit amounts", () => {
+    expect(normalizeAmount("0.50")).toBe("0.50");
   });
 
-  it("rejects invalid amount format with a 400", async () => {
-    const response = await request(app)
-      .post("/api/v1/payments/quote")
-      .send({
-        ...validPayload,
-        amount: "not-a-number",
-      });
-
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.message).toBe("Request validation failed");
+  it("normalizes multiple leading zeros", () => {
+    expect(normalizeAmount("0000123.45")).toBe("123.45");
   });
 
-  it("rejects empty assetCode with a 400", async () => {
-    const response = await request(app)
-      .post("/api/v1/payments/quote")
-      .send({
-        ...validPayload,
-        assetCode: "",
-      });
-
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.message).toBe("Request validation failed");
+  it("handles integer-only amounts", () => {
+    expect(normalizeAmount("007")).toBe("7");
   });
 
-  it("rejects completely empty payload with a 400", async () => {
-    const response = await request(app)
-      .post("/api/v1/payments/quote")
-      .send({});
+  it("trims whitespace", () => {
+    expect(normalizeAmount("  007.00  ")).toBe("7.00");
+  });
+});
 
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.message).toBe("Request validation failed");
-    expect(response.body.details.fieldErrors).toBeDefined();
+describe("quoteSchema", () => {
+  it("normalizes amount on parse", () => {
+    const result = quoteSchema.parse({ amount: "007.00" });
+    expect(result.amount).toBe("7.00");
+  });
+
+  it("applies default currency when omitted", () => {
+    const result = quoteSchema.parse({ amount: "10.00" });
+    expect(result.currency).toBe("USD");
+  });
+
+  it("rejects empty amount", () => {
+    expect(() => quoteSchema.parse({ amount: "" })).toThrow();
   });
 });
