@@ -61,6 +61,24 @@ const getMessage = (error: Error, statusCode: number): string => {
   return error.message;
 };
 
+type HttpError = Error & {
+  status?: number;
+  statusCode?: number;
+};
+
+const getStatusCode = (error: Error): number => {
+  if (error instanceof AppError) {
+    return error.statusCode;
+  }
+
+  const httpError = error as HttpError;
+  const statusCode = httpError.statusCode ?? httpError.status;
+
+  return typeof statusCode === "number" && statusCode >= 400 && statusCode < 600
+    ? statusCode
+    : 500;
+};
+
 export const errorHandler = (
   error: unknown,
   request: Request,
