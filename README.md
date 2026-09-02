@@ -56,6 +56,7 @@ The server runs on `http://localhost:4000` by default.
 - `GET /api/v1/health`
 - `GET /api/v1/agents`
 - `POST /api/v1/agents`
+- `POST /api/v1/payments/quote`
 
 All `/api/v1` responses send `Cache-Control: no-store` so dynamic agent and
 payment data is not cached by clients or shared proxies. The root route is a
@@ -109,6 +110,7 @@ src/
   modules/
     agents/
     health/
+    payments/
   routes/
   app.ts
   server.ts
